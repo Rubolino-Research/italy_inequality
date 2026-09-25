@@ -1,4 +1,5 @@
 {
+  "version": "a19aa1b4b2",
   "simulated": true,
   "firstYear": 2000,
   "lastYear": 2024,
@@ -9,6 +10,8 @@
       "unit": "index",
       "format": ".3f",
       "description": "Gini index of taxable income (0 = perfect equality, 1 = one person has everything).",
+      "label_it": "Indice di Gini",
+      "description_it": "Indice di Gini del reddito imponibile (0 = perfetta uguaglianza, 1 = una sola persona ha tutto).",
       "file": "data/indicators/gini.csv"
     },
     {
@@ -17,6 +20,8 @@
       "unit": "%",
       "format": ".1f",
       "description": "Share of total taxable income received by the top 1% of taxpayers.",
+      "label_it": "Quota di reddito dell'1% più ricco",
+      "description_it": "Quota del reddito imponibile totale percepita dall'1% dei contribuenti con i redditi più alti.",
       "file": "data/indicators/top1.csv"
     },
     {
@@ -25,6 +30,8 @@
       "unit": "%",
       "format": ".1f",
       "description": "Share of taxpayers declaring less than €15,000.",
+      "label_it": "Contribuenti con reddito sotto i 15.000 €",
+      "description_it": "Quota di contribuenti che dichiarano meno di 15.000 €.",
       "file": "data/indicators/bracket_0_15.csv"
     },
     {
@@ -33,6 +40,8 @@
       "unit": "%",
       "format": ".1f",
       "description": "Share of taxpayers declaring between €15,000 and €28,000.",
+      "label_it": "Contribuenti con reddito tra 15.000 e 28.000 €",
+      "description_it": "Quota di contribuenti che dichiarano tra 15.000 € e 28.000 €.",
       "file": "data/indicators/bracket_15_28.csv"
     },
     {
@@ -41,6 +50,8 @@
       "unit": "%",
       "format": ".1f",
       "description": "Share of taxpayers declaring between €28,000 and €50,000.",
+      "label_it": "Contribuenti con reddito tra 28.000 e 50.000 €",
+      "description_it": "Quota di contribuenti che dichiarano tra 28.000 € e 50.000 €.",
       "file": "data/indicators/bracket_28_50.csv"
     },
     {
@@ -49,6 +60,8 @@
       "unit": "%",
       "format": ".1f",
       "description": "Share of taxpayers declaring more than €50,000.",
+      "label_it": "Contribuenti con reddito sopra i 50.000 €",
+      "description_it": "Quota di contribuenti che dichiarano più di 50.000 €.",
       "file": "data/indicators/bracket_50_plus.csv"
     }
   ]

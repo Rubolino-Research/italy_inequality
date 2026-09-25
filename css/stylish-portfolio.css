@@ -90,6 +90,37 @@ body {
   z-index: 1;
 }
 
+/* Language switch, left of the menu button */
+.lang-switch {
+  position: fixed;
+  top: 12px;
+  right: 58px;
+  z-index: 1;
+  display: flex;
+}
+
+.lang-switch .btn {
+  border-radius: 0;
+  min-width: 38px;
+  font-weight: 700;
+}
+
+.lang-switch .btn:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.lang-switch .btn:last-child {
+  border-radius: 0 4px 4px 0;
+  margin-left: -1px;
+}
+
+.lang-switch .btn.active {
+  background: #428bca;
+  border-color: #357ebd;
+  color: #ffffff;
+  box-shadow: none;
+}
+
 #sidebar-wrapper.active {
   right: 250px;
   width: 250px;

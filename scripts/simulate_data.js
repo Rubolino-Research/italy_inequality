@@ -5,7 +5,8 @@
 //   node scripts/simulate_data.js
 //
 // Output (the same format the real data should be delivered in):
-//   data/indicators.json          indicator metadata (label, unit, file)
+//   data/indicators.json          indicator metadata (label, unit, file; Italian
+//                                 text in label_it / description_it)
 //   data/indicators/<id>.csv      one row per area, one column per year
 //                                 code,2000,2001,...  where code is the 6-digit
 //                                 ISTAT code of a municipality or the 5-digit CAP
@@ -26,12 +27,18 @@ const LAST_YEAR = 2024;
 const YEARS = d3range(FIRST_YEAR, LAST_YEAR + 1);
 
 const INDICATORS = [
-  { id: "gini", label: "Gini index", unit: "index", format: ".3f", description: "Gini index of taxable income (0 = perfect equality, 1 = one person has everything)." },
-  { id: "top1", label: "Top 1% income share", unit: "%", format: ".1f", description: "Share of total taxable income received by the top 1% of taxpayers." },
-  { id: "bracket_0_15", label: "Taxpayers earning under €15,000", unit: "%", format: ".1f", description: "Share of taxpayers declaring less than €15,000." },
-  { id: "bracket_15_28", label: "Taxpayers earning €15,000–28,000", unit: "%", format: ".1f", description: "Share of taxpayers declaring between €15,000 and €28,000." },
-  { id: "bracket_28_50", label: "Taxpayers earning €28,000–50,000", unit: "%", format: ".1f", description: "Share of taxpayers declaring between €28,000 and €50,000." },
-  { id: "bracket_50_plus", label: "Taxpayers earning over €50,000", unit: "%", format: ".1f", description: "Share of taxpayers declaring more than €50,000." }
+  { id: "gini", label: "Gini index", unit: "index", format: ".3f", description: "Gini index of taxable income (0 = perfect equality, 1 = one person has everything).",
+    label_it: "Indice di Gini", description_it: "Indice di Gini del reddito imponibile (0 = perfetta uguaglianza, 1 = una sola persona ha tutto)." },
+  { id: "top1", label: "Top 1% income share", unit: "%", format: ".1f", description: "Share of total taxable income received by the top 1% of taxpayers.",
+    label_it: "Quota di reddito dell'1% più ricco", description_it: "Quota del reddito imponibile totale percepita dall'1% dei contribuenti con i redditi più alti." },
+  { id: "bracket_0_15", label: "Taxpayers earning under €15,000", unit: "%", format: ".1f", description: "Share of taxpayers declaring less than €15,000.",
+    label_it: "Contribuenti con reddito sotto i 15.000 €", description_it: "Quota di contribuenti che dichiarano meno di 15.000 €." },
+  { id: "bracket_15_28", label: "Taxpayers earning €15,000–28,000", unit: "%", format: ".1f", description: "Share of taxpayers declaring between €15,000 and €28,000.",
+    label_it: "Contribuenti con reddito tra 15.000 e 28.000 €", description_it: "Quota di contribuenti che dichiarano tra 15.000 € e 28.000 €." },
+  { id: "bracket_28_50", label: "Taxpayers earning €28,000–50,000", unit: "%", format: ".1f", description: "Share of taxpayers declaring between €28,000 and €50,000.",
+    label_it: "Contribuenti con reddito tra 28.000 e 50.000 €", description_it: "Quota di contribuenti che dichiarano tra 28.000 € e 50.000 €." },
+  { id: "bracket_50_plus", label: "Taxpayers earning over €50,000", unit: "%", format: ".1f", description: "Share of taxpayers declaring more than €50,000.",
+    label_it: "Contribuenti con reddito sopra i 50.000 €", description_it: "Quota di contribuenti che dichiarano più di 50.000 €." }
 ];
 
 // Rough north-south gradient in mean taxable income (euros, year 2000).
@@ -167,7 +174,14 @@ for (const ind of INDICATORS) {
   fs.writeFileSync(path.join(ROOT, `data/indicators/${ind.id}.csv`), out[ind.id].join("\n") + "\n");
 }
 
+// Fingerprint of the map and data files. The site adds it to every data URL,
+// so a browser holding old cached copies fetches the new ones.
+const hash = require("crypto").createHash("sha1");
+hash.update(fs.readFileSync(path.join(ROOT, "data/areas.topo.json")));
+for (const ind of INDICATORS) hash.update(out[ind.id].join("\n"));
+
 fs.writeFileSync(path.join(ROOT, "data/indicators.json"), JSON.stringify({
+  version: hash.digest("hex").slice(0, 10),
   simulated: true,
   firstYear: FIRST_YEAR,
   lastYear: LAST_YEAR,
