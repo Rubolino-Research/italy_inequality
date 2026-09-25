@@ -17,7 +17,7 @@
   var MAX_PLACES = 8;
   var SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"];
   var NATIONAL_COLOR = "#52514e";
-  var MAP_RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"];
+  var MAP_RAMP = ["#fde0dc", "#f8b5ac", "#f0877c", "#e34948", "#c3302f", "#9a2023", "#6b1418"];
   var NO_DATA = "#e4e3df";
 
   var state = {
