@@ -96,8 +96,11 @@
           <div class="col-md-6 col-md-offset-3">
             <h2 class="text-center">Request our data</h2>
             <hr>
-            <!-- TODO: point action at a form handler (e.g. Formspree) - the site is static, so there is no backend to receive this yet -->
-            <form id="request-form" action="#" method="POST">
+            <!-- Submissions are emailed via FormSubmit (formsubmit.co). Replace YOUR_EMAIL_HERE with the inbox that should receive them;
+                 the first submission sends a confirmation email that must be clicked before later ones are delivered. -->
+            <form id="request-form" action="https://formsubmit.co/YOUR_EMAIL_HERE" method="POST">
+              <input type="hidden" name="_subject" value="New data request - Inequality in Italy">
+              <input type="hidden" name="_template" value="table">
               <div class="form-group">
                 <label for="request-name">Name</label>
                 <input id="request-name" name="name" type="text" class="form-control" required>
