@@ -201,7 +201,7 @@ i.scroll:hover {
 @media (max-width: 768px) {
 	
   .header {
-	background: url('../img/background.jpg') no-repeat center top scroll; 
+	background: url('../img/background.jpg') no-repeat center 20% scroll; 
   }
 
   #zip-select {
