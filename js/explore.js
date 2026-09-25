@@ -24,6 +24,14 @@
   var MAP_RAMP = ["#fde0dc", "#f8b5ac", "#f0877c", "#e34948", "#c3302f", "#9a2023", "#6b1418"];
   var NO_DATA = "#e4e3df";
 
+  // Text comes from js/i18n.js; numbers follow the page language (0.45 / 0,45)
+  var t = I18N.t;
+  var LOCALES = {
+    en: d3.formatLocale({ decimal: ".", thousands: ",", grouping: [3], currency: ["\u20ac", ""] }),
+    it: d3.formatLocale({ decimal: ",", thousands: ".", grouping: [3], currency: ["", "\u00a0\u20ac"] })
+  };
+  function fmt(spec) { return LOCALES[I18N.lang].format(spec); }
+
   var state = {
     meta: null,
     indicator: null,
@@ -83,7 +91,7 @@
         ? { type: "cap", name: p.name, prov: p.prov, city: p.city }
         : { type: "comune", name: p.name, prov: p.prov };
     });
-    state.places[NATIONAL] = { type: "national", name: "Italy", prov: null };
+    state.places[NATIONAL] = { type: "national", name: "Italy", prov: null }; // name shown via t("explore.italy")
 
     setupControls();
     DEFAULT_PLACES.forEach(addPlace);
@@ -91,7 +99,7 @@
   }).catch(function (err) {
     panel.classList.remove("is-loading");
     document.getElementById("map-chart").textContent =
-      "Could not load the data. If you opened index.html directly from your computer, run a local web server instead (see readme).";
+      t("explore.loadError");
     console.error(err);
   });
 
@@ -127,10 +135,19 @@
     meta.indicators.forEach(function (ind) {
       var o = document.createElement("option");
       o.value = ind.id;
-      o.textContent = ind.label;
+      o.textContent = indicatorText(ind, "label");
       indicatorSelect.appendChild(o);
     });
     indicatorSelect.addEventListener("change", function () { setIndicator(this.value); });
+
+    I18N.onChange(function () {
+      Array.prototype.forEach.call(indicatorSelect.options, function (o) {
+        o.textContent = indicatorText(findIndicator(o.value), "label");
+      });
+      document.getElementById("indicator-description").textContent = indicatorText(findIndicator(state.indicator), "description");
+      updateZoomLabels();
+      render();
+    });
 
     years.slice().reverse().forEach(function (y) {
       var o = document.createElement("option");
@@ -190,7 +207,7 @@
   function setIndicator(id) {
     state.indicator = id;
     indicatorSelect.value = id;
-    document.getElementById("indicator-description").textContent = findIndicator(id).description;
+    document.getElementById("indicator-description").textContent = indicatorText(findIndicator(id), "description");
     panel.classList.add("is-loading");
     return loadIndicator(id).then(function () {
       panel.classList.remove("is-loading");
@@ -206,7 +223,7 @@
   function addPlace(code) {
     if (code === NATIONAL || state.selected.some(function (s) { return s.code === code; })) return;
     if (state.selected.length >= MAX_PLACES) {
-      window.alert("You can compare up to " + MAX_PLACES + " places. Remove one first.");
+      window.alert(t("explore.maxPlaces", { n: MAX_PLACES }));
       return;
     }
     var used = state.selected.map(function (s) { return s.color; });
@@ -232,13 +249,19 @@
   // Short form for tooltips: "Roma", "00186 Roma"
   function placeShortName(code) {
     var p = state.places[code];
+    if (p.type === "national") return t("explore.italy");
     return p.type === "cap" ? p.name + " " + p.city : p.name;
   }
 
+  // Indicator label/description in the page language ("label_it" etc. in indicators.json)
+  function indicatorText(ind, field) {
+    return (I18N.lang !== "en" && ind[field + "_" + I18N.lang]) || ind[field];
+  }
+
   function formatValue(v) {
-    if (v == null || isNaN(v)) return "No data";
+    if (v == null || isNaN(v)) return t("explore.noData");
     var ind = findIndicator(state.indicator);
-    var s = d3.format(ind.format)(v);
+    var s = fmt(ind.format)(v);
     return ind.unit === "%" ? s + "%" : s;
   }
 
@@ -303,7 +326,7 @@
           tt.append("div").text(state.year + ": ").append("strong").style("color", "#0b0b0b").text(formatValue(valueOf(f.id, state.year)));
           var selected = state.selected.some(function (s) { return s.code === f.id; });
           tt.append("div").style("margin-top", "4px").style("color", "#8a8986")
-            .text(selected ? "Click to remove from chart" : "Click to add to chart");
+            .text(selected ? t("explore.clickRemove") : t("explore.clickAdd"));
         });
       })
       .on("pointerleave", function () { map.hover.style("display", "none"); hideTooltip(); })
@@ -364,13 +387,22 @@
       btns.append("button")
         .attr("type", "button")
         .attr("class", "btn btn-default btn-xs")
-        .attr("aria-label", b[1] === 0 ? "Reset zoom" : (b[1] > 1 ? "Zoom in" : "Zoom out"))
+        .attr("data-label", b[1] === 0 ? "explore.zoomReset" : (b[1] > 1 ? "explore.zoomIn" : "explore.zoomOut"))
         .style("width", "26px")
         .text(b[0])
         .on("click", function () {
           if (b[1] === 0) map.svg.transition().duration(400).call(map.zoom.transform, d3.zoomIdentity);
           else map.svg.transition().duration(250).call(map.zoom.scaleBy, b[1]);
         });
+    });
+    updateZoomLabels();
+  }
+
+  function updateZoomLabels() {
+    d3.selectAll("#map-chart button[data-label]").each(function () {
+      var label = t(this.getAttribute("data-label"));
+      this.setAttribute("aria-label", label);
+      this.setAttribute("title", label);
     });
   }
 
@@ -436,7 +468,7 @@
       .attr("text-anchor", "middle")
       .attr("fill", "#52514e")
       .attr("font-size", 10)
-      .text(function (d) { return d3.format(ind.unit === "%" ? ".0f" : ".2f")(d) + (ind.unit === "%" ? "%" : ""); });
+      .text(function (d) { return fmt(ind.unit === "%" ? ".0f" : ".2f")(d) + (ind.unit === "%" ? "%" : ""); });
   }
 
   // ---------- line chart ----------
@@ -515,7 +547,7 @@
     if (ind.unit === "%" || ind.unit === "index") lo = Math.max(0, lo);
     line.y.domain([lo, ext[1] + pad]).nice();
 
-    var yFormat = ind.unit === "%" ? function (v) { return d3.format(".0f")(v) + "%"; } : d3.format(".2f");
+    var yFormat = ind.unit === "%" ? function (v) { return fmt(".0f")(v) + "%"; } : fmt(".2f");
     line.yAxis.call(d3.axisLeft(line.y).ticks(6).tickFormat(yFormat).tickSizeOuter(0));
     line.yAxis.select(".domain").remove();
     line.grid.call(d3.axisLeft(line.y).ticks(6).tickSize(-(line.width - line.m.left - line.m.right)).tickFormat(""));
@@ -558,7 +590,7 @@
       sorted.forEach(function (s) {
         tooltipRow(tt, s.color, formatValue(s.values[yearIndex(year)].value), placeShortName(s.code), s.dashed);
       });
-      tt.append("div").style("margin-top", "4px").style("color", "#8a8986").text("Click to show this year on the map");
+      tt.append("div").style("margin-top", "4px").style("color", "#8a8986").text(t("explore.clickYear"));
     }, x > line.width / 2);
   }
 
@@ -577,7 +609,7 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = "×";
-      btn.setAttribute("aria-label", "Remove " + placeShortName(s.code));
+      btn.setAttribute("aria-label", t("explore.remove", { name: placeShortName(s.code) }));
       btn.addEventListener("click", function () { togglePlace(s.code); });
       li.appendChild(key);
       li.appendChild(name);
@@ -589,7 +621,7 @@
     key.className = "key dashed";
     var name = document.createElement("span");
     name.className = "name";
-    name.textContent = "Italy (national)";
+    name.textContent = t("explore.italyNational");
     li.appendChild(key);
     li.appendChild(name);
     selectedList.appendChild(li);
