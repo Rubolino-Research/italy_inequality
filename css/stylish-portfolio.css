@@ -201,6 +201,17 @@ body {
 .chart-hint {
   color: #8a8986;
   font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.chart-credit {
+  color: #8a8986;
+  font-size: 11px;
+}
+
+.chart-credit a {
+  color: inherit;
+  text-decoration: underline;
 }
 
 .axis text {

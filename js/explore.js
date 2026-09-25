@@ -2,8 +2,12 @@
 //
 // Data (see scripts/simulate_data.js for the format):
 //   data/indicators.json       indicator list and year range
-//   data/indicators/<id>.csv   code,2000,2001,...  one row per municipality + "IT"
-//   data/comuni.topo.json      municipality boundaries, keyed by ISTAT code
+//   data/indicators/<id>.csv   code,2000,2001,...  one row per area + "IT"
+//   data/areas.topo.json       map areas: municipalities (6-digit ISTAT code) and,
+//                              for the large cities, their CAP zones (5-digit CAP)
+//
+// A city split into CAP zones can be selected as a whole (by its ISTAT code,
+// from the search box) or zone by zone (from the map or the search box).
 //
 // State is shared by every control: the indicator dropdown, the map slider and
 // year dropdown, and the map clicks and search box all update `state` and
@@ -12,7 +16,7 @@
 (function () {
   "use strict";
 
-  var DEFAULT_PLACES = ["058091", "015146", "063049", "001272", "082053"]; // Roma, Milano, Napoli, Torino, Palermo
+  var DEFAULT_PLACES = ["058091", "015146", "063049", "001272", "082053"]; // Roma, Milano, Napoli, Torino, Palermo (whole cities)
   var NATIONAL = "IT";
   var MAX_PLACES = 8;
   var SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"];
@@ -25,7 +29,7 @@
     indicator: null,
     year: null,
     selected: [], // [{ code, color }] - colour follows the place, never its position
-    places: {}, // code -> { name, prov }
+    places: {}, // code -> { type: "comune" | "city" | "cap", name, prov, city }
     cache: {} // indicator id -> Map(code -> [values by year])
   };
 
@@ -47,19 +51,39 @@
 
   Promise.all([
     d3.json("data/indicators.json"),
-    d3.json("data/comuni.topo.json")
+    d3.json("data/areas.topo.json")
   ]).then(function (res) {
     state.meta = res[0];
     var topo = res[1];
-    map.features = topojson.feature(topo, topo.objects.comuni).features;
-    map.regionBorders = topojson.mesh(topo, topo.objects.comuni, function (a, b) {
+    var areas = topo.objects.areas;
+    map.features = topojson.feature(topo, areas).features;
+    map.regionBorders = topojson.mesh(topo, areas, function (a, b) {
       return a.properties.reg !== b.properties.reg;
     });
-    map.coast = topojson.mesh(topo, topo.objects.comuni, function (a, b) { return a === b; });
-    map.features.forEach(function (f) {
-      state.places[f.id] = { name: f.properties.name, prov: f.properties.prov };
+    map.coast = topojson.mesh(topo, areas, function (a, b) { return a === b; });
+    // Outline of each city that is split into CAP zones
+    map.cityBorders = topojson.mesh(topo, areas, function (a, b) {
+      return a !== b && (a.properties.cityCode || a.id) !== (b.properties.cityCode || b.id) &&
+        (a.properties.type === "cap" || b.properties.type === "cap");
     });
-    state.places[NATIONAL] = { name: "Italy", prov: null };
+
+    // Whole-city shapes for the split cities, for markers and hover
+    var zonesByCity = d3.group(areas.geometries.filter(function (g) { return g.properties.type === "cap"; }),
+      function (g) { return g.properties.cityCode; });
+    map.shapes = {};
+    zonesByCity.forEach(function (geoms, cityCode) {
+      map.shapes[cityCode] = topojson.merge(topo, geoms);
+      var p = geoms[0].properties;
+      state.places[cityCode] = { type: "city", name: p.city, prov: p.prov };
+    });
+    map.features.forEach(function (f) {
+      var p = f.properties;
+      map.shapes[f.id] = f;
+      state.places[f.id] = p.type === "cap"
+        ? { type: "cap", name: p.name, prov: p.prov, city: p.city }
+        : { type: "comune", name: p.name, prov: p.prov };
+    });
+    state.places[NATIONAL] = { type: "national", name: "Italy", prov: null };
 
     setupControls();
     DEFAULT_PLACES.forEach(addPlace);
@@ -118,7 +142,7 @@
 
     document.getElementById("simulated-note").hidden = !meta.simulated;
 
-    // Search box: datalist of "Name (PR)" labels
+    // Search box: datalist of "Name (PR)" and "CAP – City (PR)" labels
     var byLabel = {};
     Object.keys(state.places).sort(function (a, b) {
       return d3.ascending(state.places[a].name, state.places[b].name);
@@ -134,6 +158,7 @@
       var v = searchInput.value.trim().toLowerCase();
       if (!v) return;
       var code = byLabel[v];
+      if (!code && /^\d{5}$/.test(v) && state.places[v]) code = v;
       if (!code) {
         // Allow typing just the name when it is unique
         var matches = Object.keys(byLabel).filter(function (k) { return k.split(" (")[0] === v; });
@@ -177,7 +202,7 @@
   function addPlace(code) {
     if (code === NATIONAL || state.selected.some(function (s) { return s.code === code; })) return;
     if (state.selected.length >= MAX_PLACES) {
-      window.alert("You can compare up to " + MAX_PLACES + " municipalities. Remove one first.");
+      window.alert("You can compare up to " + MAX_PLACES + " places. Remove one first.");
       return;
     }
     var used = state.selected.map(function (s) { return s.color; });
@@ -196,7 +221,14 @@
 
   function placeLabel(code) {
     var p = state.places[code];
+    if (p.type === "cap") return p.name + " \u2013 " + p.city + " (" + p.prov + ")";
     return p.prov ? p.name + " (" + p.prov + ")" : p.name;
+  }
+
+  // Short form for tooltips: "Roma", "00186 Roma"
+  function placeShortName(code) {
+    var p = state.places[code];
+    return p.type === "cap" ? p.name + " " + p.city : p.name;
   }
 
   function formatValue(v) {
@@ -291,6 +323,15 @@
       .attr("vector-effect", "non-scaling-stroke")
       .style("pointer-events", "none");
 
+    map.g.append("path")
+      .datum(map.cityBorders)
+      .attr("d", path)
+      .attr("fill", "none")
+      .attr("stroke", "#52514e")
+      .attr("stroke-width", 0.8)
+      .attr("vector-effect", "non-scaling-stroke")
+      .style("pointer-events", "none");
+
     map.hover = map.g.append("path")
       .attr("fill", "none")
       .attr("stroke", "#0b0b0b")
@@ -356,8 +397,7 @@
     var k = d3.zoomTransform(map.svg.node()).k;
     map.markers.selectAll("circle")
       .data(state.selected.map(function (s) {
-        var f = map.features.find(function (x) { return x.id === s.code; });
-        return { code: s.code, color: s.color, xy: map.path.centroid(f) };
+        return { code: s.code, color: s.color, xy: map.path.centroid(map.shapes[s.code]) };
       }), function (d) { return d.code; })
       .join("circle")
       .attr("cx", function (d) { return d.xy[0]; })
@@ -512,7 +552,7 @@
     showTooltip(event, function (tt) {
       tt.append("div").attr("class", "title").text(year);
       sorted.forEach(function (s) {
-        tooltipRow(tt, s.color, formatValue(s.values[yearIndex(year)].value), state.places[s.code].name, s.dashed);
+        tooltipRow(tt, s.color, formatValue(s.values[yearIndex(year)].value), placeShortName(s.code), s.dashed);
       });
       tt.append("div").style("margin-top", "4px").style("color", "#8a8986").text("Click to show this year on the map");
     }, x > line.width / 2);
@@ -533,7 +573,7 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = "×";
-      btn.setAttribute("aria-label", "Remove " + state.places[s.code].name);
+      btn.setAttribute("aria-label", "Remove " + placeShortName(s.code));
       btn.addEventListener("click", function () { togglePlace(s.code); });
       li.appendChild(key);
       li.appendChild(name);
