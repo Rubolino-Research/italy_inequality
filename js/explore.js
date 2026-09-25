@@ -49,12 +49,12 @@
 
   // ---------- loading ----------
 
-  Promise.all([
-    d3.json("data/indicators.json"),
-    d3.json("data/areas.topo.json")
-  ]).then(function (res) {
-    state.meta = res[0];
-    var topo = res[1];
+  // indicators.json is always re-checked with the server; its "version" is
+  // added to every other data URL so browsers never mix old and new files.
+  d3.json("data/indicators.json", { cache: "no-cache" }).then(function (meta) {
+    state.meta = meta;
+    return d3.json(versioned("data/areas.topo.json"));
+  }).then(function (topo) {
     var areas = topo.objects.areas;
     map.features = topojson.feature(topo, areas).features;
     map.regionBorders = topojson.mesh(topo, areas, function (a, b) {
@@ -98,7 +98,7 @@
   function loadIndicator(id) {
     if (state.cache[id]) return Promise.resolve(state.cache[id]);
     var ind = findIndicator(id);
-    return d3.text(ind.file).then(function (text) {
+    return d3.text(versioned(ind.file)).then(function (text) {
       var rows = d3.csvParseRows(text);
       var values = new Map();
       rows.slice(1).forEach(function (r) {
@@ -107,6 +107,10 @@
       state.cache[id] = values;
       return values;
     });
+  }
+
+  function versioned(url) {
+    return state.meta.version ? url + "?v=" + encodeURIComponent(state.meta.version) : url;
   }
 
   function findIndicator(id) {

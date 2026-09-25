@@ -167,7 +167,14 @@ for (const ind of INDICATORS) {
   fs.writeFileSync(path.join(ROOT, `data/indicators/${ind.id}.csv`), out[ind.id].join("\n") + "\n");
 }
 
+// Fingerprint of the map and data files. The site adds it to every data URL,
+// so a browser holding old cached copies fetches the new ones.
+const hash = require("crypto").createHash("sha1");
+hash.update(fs.readFileSync(path.join(ROOT, "data/areas.topo.json")));
+for (const ind of INDICATORS) hash.update(out[ind.id].join("\n"));
+
 fs.writeFileSync(path.join(ROOT, "data/indicators.json"), JSON.stringify({
+  version: hash.digest("hex").slice(0, 10),
   simulated: true,
   firstYear: FIRST_YEAR,
   lastYear: LAST_YEAR,

@@ -15,7 +15,9 @@ Static site (GitHub Pages) showing income inequality across Italian municipaliti
 
 **The indicator data is currently simulated** (`node scripts/simulate_data.js`). To use real
 data, replace the CSVs with files in the same format and set `"simulated": false` in
-`data/indicators.json`. Boundaries are rebuilt with `scripts/prepare_boundaries.js` (instructions at the top of the
+`data/indicators.json`. Whenever the data or map files change, also change the `version`
+value in `data/indicators.json` (the simulation script does this automatically): browsers
+cache the data files, and the version makes them fetch the new ones. Boundaries are rebuilt with `scripts/prepare_boundaries.js` (instructions at the top of the
 script). Zip code areas are derived from Zornade's sub-municipal CAP zones (open data with
 attribution; includes OpenStreetMap data, ODbL), so the credit line under the map must stay.
 
