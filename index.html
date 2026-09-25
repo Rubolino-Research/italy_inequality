@@ -74,7 +74,8 @@
                     <input id="year-slider" type="range" aria-label="Year">
                     <span id="year-label" class="year-label"></span>
                   </div>
-                  <p class="chart-hint">Scroll or pinch to zoom, drag to pan, click a municipality to add it to the chart.</p>
+                  <p class="chart-hint">Scroll or pinch to zoom, drag to pan, click an area to add it to the chart. Large cities are split into zip codes (CAP).</p>
+                  <p class="chart-credit">Zip code areas derived from <a href="https://zornade.com/data-downloads/" target="_blank" rel="noopener">Zornade</a> (includes &copy; OpenStreetMap contributors, ODbL). Municipal boundaries: ISTAT via <a href="https://github.com/openpolis/geojson-italy" target="_blank" rel="noopener">openpolis</a>.</p>
                 </div>
                 <div class="col-md-5">
                   <div id="line-chart" class="chart-box" aria-label="Line chart of the selected municipalities over time"></div>
@@ -88,8 +89,8 @@
                   <!-- Municipalities can be added here or by clicking the map; both feed the same selection.
                        Zip codes for large cities will be added here later. -->
                   <div class="form-group">
-                    <label for="place-search">Municipality</label>
-                    <input id="place-search" type="search" class="form-control" placeholder="Search, e.g. Bologna" list="place-options" autocomplete="off">
+                    <label for="place-search">Municipality or zip code</label>
+                    <input id="place-search" type="search" class="form-control" placeholder="e.g. Bologna or 00186" list="place-options" autocomplete="off">
                     <datalist id="place-options"></datalist>
                   </div>
                   <ul id="place-selected" class="place-selected list-unstyled"></ul>

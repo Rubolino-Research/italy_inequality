@@ -1,13 +1,17 @@
-// Generates SIMULATED municipality-level inequality data so the charts can be
-// built before the real data arrives. Run from the repo root:
+// Generates SIMULATED inequality data for every area on the map (municipalities,
+// and CAP zones for the large cities) so the charts can be built before the
+// real data arrives. Run from the repo root:
 //
 //   node scripts/simulate_data.js
 //
 // Output (the same format the real data should be delivered in):
 //   data/indicators.json          indicator metadata (label, unit, file)
-//   data/indicators/<id>.csv      one row per municipality, one column per year
-//                                 code,2000,2001,...  (code = 6-digit ISTAT code,
-//                                 plus a row "IT" for the national figure)
+//   data/indicators/<id>.csv      one row per area, one column per year
+//                                 code,2000,2001,...  where code is the 6-digit
+//                                 ISTAT code of a municipality or the 5-digit CAP
+//                                 of a zone; the cities split into CAP zones also
+//                                 keep a whole-city row under their ISTAT code;
+//                                 plus a row "IT" for the national figure
 //
 // Each municipality gets a log-normal income distribution whose mean and
 // spread drift over time, so the Gini, top 1% share and bracket shares are
@@ -87,11 +91,15 @@ function macro(year) {
   return { income, spread };
 }
 
-function simulate(code, region) {
-  const rand = rng(parseInt(code, 36));
-  const city = CITIES[code] || 0;
-  const mean0 = (REGION_MEAN_2000[region] || 17000) * (1 + 0.08 * gauss(rand)) * (1 + 0.25 * city);
-  const sigma0 = Math.max(0.45, 0.76 + 0.05 * gauss(rand) + 0.15 * city);
+// cityCode is set for CAP zones: they inherit their city's profile, with
+// richer and poorer neighbourhoods around it.
+function simulate(code, region, cityCode) {
+  const rand = rng(parseInt((cityCode ? "cap" : "") + code, 36));
+  const city = CITIES[cityCode || code] || (cityCode ? 0.3 : 0);
+  const zoneIncome = cityCode ? Math.exp(0.25 * gauss(rand)) : 1;
+  const zoneSpread = cityCode ? 0.08 * gauss(rand) : 0;
+  const mean0 = (REGION_MEAN_2000[region] || 17000) * (1 + 0.08 * gauss(rand)) * (1 + 0.25 * city) * zoneIncome;
+  const sigma0 = Math.max(0.45, 0.76 + 0.05 * gauss(rand) + 0.15 * city + zoneSpread);
   const drift = 0.002 * gauss(rand);
   const topBoost = 1.4 + 0.3 * city + 0.1 * rand();
 
@@ -119,8 +127,23 @@ function simulate(code, region) {
   return rows;
 }
 
-const topo = JSON.parse(fs.readFileSync(path.join(ROOT, "data/comuni.topo.json")));
-const comuni = topo.objects.comuni.geometries;
+const topo = JSON.parse(fs.readFileSync(path.join(ROOT, "data/areas.topo.json")));
+const areas = topo.objects.areas.geometries;
+
+// Rows to write: every area, plus a whole-city row for each city split into CAP zones
+const units = [];
+const splitCities = new Map();
+for (const g of areas) {
+  const p = g.properties;
+  if (p.type === "cap") {
+    units.push({ code: g.id, region: p.reg, cityCode: p.cityCode });
+    splitCities.set(p.cityCode, p.reg);
+  } else {
+    units.push({ code: g.id, region: p.reg });
+  }
+}
+splitCities.forEach((region, code) => units.push({ code, region }));
+const municipalities = units.filter(u => !u.cityCode);
 
 const out = {};
 for (const ind of INDICATORS) out[ind.id] = [["code", ...YEARS].join(",")];
@@ -128,12 +151,12 @@ for (const ind of INDICATORS) out[ind.id] = [["code", ...YEARS].join(",")];
 const national = {};
 for (const ind of INDICATORS) national[ind.id] = YEARS.map(() => 0);
 
-for (const g of comuni) {
-  const rows = simulate(g.id, g.properties.reg);
+for (const u of units) {
+  const rows = simulate(u.code, u.region, u.cityCode);
   for (const ind of INDICATORS) {
     const decimals = ind.unit === "index" ? 3 : 1;
-    out[ind.id].push([g.id, ...rows[ind.id].map(v => v.toFixed(decimals))].join(","));
-    rows[ind.id].forEach((v, i) => { national[ind.id][i] += v / comuni.length; });
+    out[ind.id].push([u.code, ...rows[ind.id].map(v => v.toFixed(decimals))].join(","));
+    if (!u.cityCode) rows[ind.id].forEach((v, i) => { national[ind.id][i] += v / municipalities.length; });
   }
 }
 
@@ -151,4 +174,4 @@ fs.writeFileSync(path.join(ROOT, "data/indicators.json"), JSON.stringify({
   indicators: INDICATORS.map(i => ({ ...i, file: `data/indicators/${i.id}.csv` }))
 }, null, 2) + "\n");
 
-console.log(`Wrote ${INDICATORS.length} indicators for ${comuni.length} municipalities, ${FIRST_YEAR}-${LAST_YEAR}.`);
+console.log(`Wrote ${INDICATORS.length} indicators for ${municipalities.length} municipalities and ${units.length - municipalities.length} CAP zones, ${FIRST_YEAR}-${LAST_YEAR}.`);
