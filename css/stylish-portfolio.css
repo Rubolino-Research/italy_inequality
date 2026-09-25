@@ -152,7 +152,16 @@ body {
 /* Intro */
 
 .intro {
-  padding: 50px 0;
+  padding: 20px 0 40px;
+}
+
+.intro-text {
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+.intro-text h1 {
+  margin-top: 10px;
 }
 
 /* Explore (charts panel) */
