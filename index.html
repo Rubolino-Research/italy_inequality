@@ -54,44 +54,45 @@
     </div>
     <!-- /Intro -->
   
-    <!-- Explore: indicator selector, map + line chart + zip code pickers -->
+    <!-- Explore: indicator selector, map + line chart + municipality pickers (logic in js/explore.js) -->
     <div id="explore" class="explore">
       <div class="container">
         <div class="row">
           <div class="col-md-12">
-            <div class="explore-panel">
+            <div class="explore-panel is-loading">
               <div class="explore-toolbar">
                 <label for="indicator-select">Indicator</label>
-                <select id="indicator-select" class="form-control" disabled>
-                  <option>Indicators coming soon</option>
-                </select>
+                <select id="indicator-select" class="form-control"></select>
+                <p id="indicator-description" class="indicator-description"></p>
+                <p id="simulated-note" class="simulated-note" hidden>Simulated data for demonstration only &ndash; these are not real figures.</p>
               </div>
               <div class="row">
                 <div class="col-md-5">
-                  <div id="map-chart" class="chart-placeholder">Map</div>
+                  <div id="map-chart" class="chart-box" aria-label="Map of Italian municipalities"></div>
+                  <div id="map-legend" class="map-legend"></div>
                   <div class="year-slider">
-                    <input id="year-slider" type="range" disabled>
-                    <span id="year-label">Year</span>
+                    <input id="year-slider" type="range" aria-label="Year">
+                    <span id="year-label" class="year-label"></span>
                   </div>
+                  <p class="chart-hint">Scroll or pinch to zoom, drag to pan, click a municipality to add it to the chart.</p>
                 </div>
                 <div class="col-md-5">
-                  <div id="line-chart" class="chart-placeholder">Line chart</div>
+                  <div id="line-chart" class="chart-box" aria-label="Line chart of the selected municipalities over time"></div>
                 </div>
                 <div class="col-md-2">
                   <!-- Year dropdown and map slider stay in sync: changing either updates the other -->
                   <div class="form-group">
                     <label for="year-select">Year</label>
-                    <select id="year-select" class="form-control" disabled>
-                      <option>Years coming soon</option>
-                    </select>
+                    <select id="year-select" class="form-control"></select>
                   </div>
-                  <!-- Zip codes can be added here or by clicking the map; both feed the same selection -->
+                  <!-- Municipalities can be added here or by clicking the map; both feed the same selection.
+                       Zip codes for large cities will be added here later. -->
                   <div class="form-group">
-                    <label for="zip-search">Zip code</label>
-                    <input id="zip-search" type="search" class="form-control" placeholder="Search zip codes" list="zip-options" disabled>
-                    <datalist id="zip-options"></datalist>
+                    <label for="place-search">Municipality</label>
+                    <input id="place-search" type="search" class="form-control" placeholder="Search, e.g. Bologna" list="place-options" autocomplete="off">
+                    <datalist id="place-options"></datalist>
                   </div>
-                  <ul id="zip-selected" class="zip-selected list-unstyled"></ul>
+                  <ul id="place-selected" class="place-selected list-unstyled"></ul>
                 </div>
               </div>
             </div>
@@ -154,6 +155,9 @@
     <!-- JavaScript -->
     <script src="js/jquery-1.10.2.js"></script>
     <script src="js/bootstrap.js"></script>
+    <script src="js/d3.min.js"></script>
+    <script src="js/topojson-client.min.js"></script>
+    <script src="js/explore.js"></script>
 
     <!-- Custom JavaScript for the Side Menu and Smooth Scrolling -->
     <script>
