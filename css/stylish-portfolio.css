@@ -140,6 +140,10 @@ body {
 
 .explore-toolbar {
   margin-bottom: 20px;
+  max-width: 600px;
+}
+
+#indicator-select {
   max-width: 320px;
 }
 
@@ -327,6 +331,11 @@ i.scroll:hover {
 /* Responsive */
 
 @media (max-width: 768px) {
+
+  /* Room for the longest indicator description, so switching indicators never shifts the panel */
+  .indicator-description {
+    min-height: 3em;
+  }
 	
   .header {
 	background: url('../img/background.jpg') no-repeat center 15% scroll; 
