@@ -67,19 +67,31 @@
                 </select>
               </div>
               <div class="row">
-                <div class="col-md-5">
+                <div class="col-md-3">
                   <div id="map-chart" class="chart-placeholder">Map</div>
                   <div class="year-slider">
                     <input id="year-slider" type="range" disabled>
                     <span id="year-label">Year</span>
                   </div>
                 </div>
-                <div class="col-md-5">
+                <div class="col-md-7">
                   <div id="line-chart" class="chart-placeholder">Line chart</div>
                 </div>
                 <div class="col-md-2">
-                  <label for="zip-select">Zip codes</label>
-                  <select id="zip-select" class="form-control" multiple disabled></select>
+                  <!-- Year dropdown and map slider stay in sync: changing either updates the other -->
+                  <div class="form-group">
+                    <label for="year-select">Year</label>
+                    <select id="year-select" class="form-control" disabled>
+                      <option>Years coming soon</option>
+                    </select>
+                  </div>
+                  <!-- Zip codes can be added here or by clicking the map; both feed the same selection -->
+                  <div class="form-group">
+                    <label for="zip-search">Zip code</label>
+                    <input id="zip-search" type="search" class="form-control" placeholder="Search zip codes" list="zip-options" disabled>
+                    <datalist id="zip-options"></datalist>
+                  </div>
+                  <ul id="zip-selected" class="zip-selected list-unstyled"></ul>
                 </div>
               </div>
             </div>

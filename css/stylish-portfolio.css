@@ -164,8 +164,9 @@ body {
   flex: 1;
 }
 
-#zip-select {
-  height: 420px;
+.zip-selected {
+  max-height: 260px;
+  overflow-y: auto;
 }
 
 /* Data Request */
@@ -201,11 +202,7 @@ i.scroll:hover {
 @media (max-width: 768px) {
 	
   .header {
-	background: url('../img/background.jpg') no-repeat center top scroll; 
-  }
-
-  #zip-select {
-    height: 200px;
+	background: url('../img/background.jpg') no-repeat center 20% scroll; 
   }
 
 }
