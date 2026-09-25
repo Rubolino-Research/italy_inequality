@@ -1,0 +1,55 @@
+{
+  "simulated": true,
+  "firstYear": 2000,
+  "lastYear": 2024,
+  "indicators": [
+    {
+      "id": "gini",
+      "label": "Gini index",
+      "unit": "index",
+      "format": ".3f",
+      "description": "Gini index of taxable income (0 = perfect equality, 1 = one person has everything).",
+      "file": "data/indicators/gini.csv"
+    },
+    {
+      "id": "top1",
+      "label": "Top 1% income share",
+      "unit": "%",
+      "format": ".1f",
+      "description": "Share of total taxable income received by the top 1% of taxpayers.",
+      "file": "data/indicators/top1.csv"
+    },
+    {
+      "id": "bracket_0_15",
+      "label": "Taxpayers earning under €15,000",
+      "unit": "%",
+      "format": ".1f",
+      "description": "Share of taxpayers declaring less than €15,000.",
+      "file": "data/indicators/bracket_0_15.csv"
+    },
+    {
+      "id": "bracket_15_28",
+      "label": "Taxpayers earning €15,000–28,000",
+      "unit": "%",
+      "format": ".1f",
+      "description": "Share of taxpayers declaring between €15,000 and €28,000.",
+      "file": "data/indicators/bracket_15_28.csv"
+    },
+    {
+      "id": "bracket_28_50",
+      "label": "Taxpayers earning €28,000–50,000",
+      "unit": "%",
+      "format": ".1f",
+      "description": "Share of taxpayers declaring between €28,000 and €50,000.",
+      "file": "data/indicators/bracket_28_50.csv"
+    },
+    {
+      "id": "bracket_50_plus",
+      "label": "Taxpayers earning over €50,000",
+      "unit": "%",
+      "format": ".1f",
+      "description": "Share of taxpayers declaring more than €50,000.",
+      "file": "data/indicators/bracket_50_plus.csv"
+    }
+  ]
+}

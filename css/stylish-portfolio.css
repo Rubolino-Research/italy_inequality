@@ -143,30 +143,157 @@ body {
   max-width: 320px;
 }
 
-.chart-placeholder {
+.explore-panel.is-loading .chart-box {
+  opacity: 0.5;
+}
+
+.indicator-description {
+  color: #52514e;
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+
+.simulated-note {
+  color: #9a5b00;
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
+.chart-box {
+  position: relative;
   height: 420px;
-  border: 1px dashed #cccccc;
-  color: #999999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 15px;
+  transition: opacity 0.2s;
+}
+
+.chart-box svg {
+  display: block;
+}
+
+#map-chart svg {
+  cursor: grab;
+}
+
+.map-legend {
+  height: 36px;
 }
 
 .year-slider {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 15px;
+  margin: 4px 0 6px;
 }
 
 .year-slider input {
   flex: 1;
 }
 
-.zip-selected {
-  max-height: 260px;
+.year-label {
+  font-weight: 700;
+  min-width: 3em;
+  text-align: right;
+}
+
+.chart-hint {
+  color: #8a8986;
+  font-size: 12px;
+}
+
+.axis text {
+  fill: #52514e;
+  font-size: 11px;
+}
+
+.axis path,
+.axis line {
+  stroke: #d6d5d0;
+}
+
+.grid line {
+  stroke: #ecebe7;
+}
+
+.grid path {
+  display: none;
+}
+
+.place-selected {
+  max-height: 300px;
   overflow-y: auto;
+}
+
+.place-selected li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.place-selected .key {
+  flex: none;
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.place-selected .key.dashed {
+  background: repeating-linear-gradient(90deg, #52514e 0 4px, transparent 4px 7px) !important;
+}
+
+.place-selected .name {
+  flex: 1;
+}
+
+.place-selected button {
+  border: 0;
+  background: none;
+  color: #8a8986;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.place-selected button:hover {
+  color: #0b0b0b;
+}
+
+.chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: #ffffff;
+  border: 1px solid #d6d5d0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #52514e;
+  z-index: 10;
+  max-width: 240px;
+}
+
+.chart-tooltip .title {
+  color: #0b0b0b;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.chart-tooltip .row-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.chart-tooltip .row-item strong {
+  color: #0b0b0b;
+  min-width: 3.5em;
+}
+
+.chart-tooltip .key {
+  width: 12px;
+  height: 2px;
+  flex: none;
 }
 
 /* Data Request */
