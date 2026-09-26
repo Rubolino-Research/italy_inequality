@@ -149,6 +149,18 @@ body {
   background-size: cover;
 }
 
+/* Header title + button. max-width = how wide the title may get before it
+   wraps onto a second line (smaller = narrower). */
+.header-text {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.header-text h1 {
+  margin-bottom: 20px;
+}
+
 /* Intro */
 
 .intro {
