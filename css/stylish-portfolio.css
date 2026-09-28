@@ -192,11 +192,33 @@ body {
 
 .explore-toolbar {
   margin-bottom: 20px;
-  max-width: 600px;
+  max-width: 660px;
 }
 
-#indicator-select {
-  max-width: 320px;
+/* City picker and indicator sit side by side */
+.city-picker,
+.indicator-picker {
+  display: inline-block;
+  vertical-align: top;
+  width: 320px;
+  max-width: 100%;
+  margin: 0 12px 0 0;
+}
+
+.city-picker {
+  width: 220px;
+}
+
+/* Heading between the two panels */
+.panel-heading-block {
+  margin: 50px 0 20px;
+  text-align: center;
+}
+
+.panel-heading-block p {
+  color: #52514e;
+  max-width: 560px;
+  margin: 0 auto;
 }
 
 .explore-panel.is-loading .chart-box {
@@ -225,8 +247,21 @@ body {
   display: block;
 }
 
-#map-chart svg {
+.js-map svg {
   cursor: grab;
+}
+
+.zoom-buttons {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zoom-buttons .btn {
+  width: 26px;
 }
 
 .map-legend {

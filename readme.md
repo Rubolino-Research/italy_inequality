@@ -5,9 +5,13 @@ Static site (GitHub Pages) showing income inequality across Italian municipaliti
 ## Structure
 
 - `index.html` - page: intro, explore panel (map + line chart), data request form
-- `js/explore.js` - the interactive charts (D3 v7, vendored in `js/d3.min.js`)
-- `data/areas.topo.json` - map areas: municipalities (6-digit ISTAT code), with the 41 cities
-  that have several zip codes split into zip code (CAP) zones (5-digit CAP)
+- `js/explore.js` - the interactive charts (D3 v7, vendored in `js/d3.min.js`): an Italy panel
+  (municipalities) and a city panel (zip codes), each with its own line chart and list
+- `js/i18n.js` - all page text in English and Italian
+- `data/comuni.topo.json` - municipality boundaries keyed by 6-digit ISTAT code (Italy map)
+- `data/cities.json` - the 41 cities that have several zip codes, with their zip code lists
+- `data/cities/<ISTAT>.topo.json` - one map per city split into zip code (CAP) zones, loaded
+  only when that city is picked in the second panel
 - `data/indicators.json` - list of indicators and the year range
 - `data/indicators/<id>.csv` - one file per indicator: `code,2000,2001,...`, one row per
   municipality (ISTAT code) and per zip code zone (CAP), plus whole-city rows for the split
