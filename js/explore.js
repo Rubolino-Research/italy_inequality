@@ -349,6 +349,7 @@
 
     panel.setGeo = function (geo) {
       panel.geo = geo;
+      root.classList.remove("is-loading");
       buildMap();
       panel.render();
     };
@@ -359,7 +360,6 @@
       root.classList.add("is-loading");
       loadCityMap(code).then(function (topo) {
         if (panel.cityCode !== code) return; // another city was picked meanwhile
-        root.classList.remove("is-loading");
         panel.setGeo({
           features: topojson.feature(topo, topo.objects.zones).features,
           zoneBorders: topojson.mesh(topo, topo.objects.zones, function (a, b) { return a !== b; }),
