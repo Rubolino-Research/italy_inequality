@@ -1,6 +1,9 @@
-// Builds data/areas.topo.json: every Italian municipality, except the large
-// cities that have several postcodes (CAP), which are split into CAP zones.
-// Only needs re-running if the boundaries change.
+// Builds the map files. Only needs re-running if the boundaries change.
+//
+//   data/comuni.topo.json          every Italian municipality (Italy map)
+//   data/cities.json               the cities that have several postcodes (CAP),
+//                                  with their CAP list and map file
+//   data/cities/<ISTAT>.topo.json  one map per city, split into CAP zones
 //
 // Sources:
 //   Municipalities: openpolis/geojson-italy (ISTAT boundaries)
@@ -10,32 +13,29 @@
 //     https://zornade.com/data-downloads/  (shapefile: cap_subcomunali_italia.zip)
 //
 // From the repo root:
-//   npm install --no-save d3-contour d3-delaunay d3-geo polygon-clipping shapefile topojson-client topojson-server topojson-simplify
+//   npm install --no-save d3-contour d3-geo polygon-clipping shapefile topojson-client topojson-server topojson-simplify
 //   node scripts/prepare_boundaries.js <limits_IT_municipalities.topo.json> <cap_subcom.shp>
 //
 // The Zornade zones are built from cadastral parcels, so each zone is a
-// cloud of building blocks with gaps (streets) between them. To get solid
-// zones that tile the city, each city is rebuilt on a ~100 m grid (every cell
-// takes the CAP of the nearest parcel), then traced and clipped to the ISTAT
-// city boundary so it lines up with its neighbours.
-//
-// Output features (object "areas"):
-//   municipality: id = 6-digit ISTAT code, properties { type: "comune", name, prov, reg }
-//   CAP zone:     id = 5-digit CAP, properties { type: "cap", name: CAP, city, cityCode, prov, reg }
+// cloud of building blocks with gaps (streets, parks) between them. To get
+// solid zones that tile the city, each city is rebuilt on a CELL_M grid:
+// cells inside a parcel take that parcel's CAP, every other cell takes the
+// CAP of the nearest parcel, and the zones are traced from the grid and
+// clipped to the ISTAT city boundary.
 
 const fs = require("fs");
 const path = require("path");
 const shapefile = require("shapefile");
-const { Delaunay } = require("d3-delaunay");
 const polygonClipping = require("polygon-clipping");
-const { topology } = require("topojson-server");
-const { presimplify, simplify, filter, filterWeight } = require("topojson-simplify");
-const { quantize, feature } = require("topojson-client");
 const { contours } = require("d3-contour");
 const { geoArea } = require("d3-geo");
+const { topology } = require("topojson-server");
+const { presimplify, simplify, quantile, filter, filterWeight } = require("topojson-simplify");
+const { quantize, feature } = require("topojson-client");
 
-const CELL_M = 100; // grid cell size used to rebuild solid CAP zones
-const SIMPLIFY_WEIGHT = 1e-6; // planar triangle area in degrees² below which points are dropped
+const DATA = path.join(__dirname, "..", "data");
+const CELL_M = 25; // grid cell size for rebuilding CAP zones
+const CITY_SIMPLIFY = 2e-9; // planar triangle area (degrees²) below which city map points are dropped
 
 async function main() {
   const [comuniPath, capPath] = process.argv.slice(2);
@@ -44,73 +44,76 @@ async function main() {
   }
 
   const comuniTopo = JSON.parse(fs.readFileSync(comuniPath));
-  const comuni = feature(comuniTopo, comuniTopo.objects.comuni).features;
+  writeItalyMap(comuniTopo);
 
-  // Parcel vertices per city, labelled with their CAP
+  // Parcels per city, labelled with their CAP
+  const comuni = feature(comuniTopo, comuniTopo.objects.comuni).features;
   const source = await shapefile.open(capPath, capPath.replace(/\.shp$/, ".dbf"), { encoding: "windows-1252" });
-  const cities = new Map(); // belfiore -> { caps: Set, points: [[lon, lat, cap]] }
+  const parcels = new Map(); // belfiore -> { caps: Set, rings: [[ring, cap]] }
   for (;;) {
     const r = await source.read();
     if (r.done) break;
     const p = r.value.properties;
     const g = r.value.geometry;
     if (!g || !p.cap) continue;
-    if (!cities.has(p.codice_bel)) cities.set(p.codice_bel, { caps: new Set(), points: [] });
-    const city = cities.get(p.codice_bel);
+    if (!parcels.has(p.codice_bel)) parcels.set(p.codice_bel, { caps: new Set(), rings: [] });
+    const city = parcels.get(p.codice_bel);
     city.caps.add(p.cap);
     const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
-    for (const poly of polys) {
-      // one labelled point per parcel: the average of its outer ring
-      const ring = poly[0];
-      let sx = 0, sy = 0;
-      for (const [x, y] of ring) { sx += x; sy += y; }
-      city.points.push([sx / ring.length, sy / ring.length, p.cap]);
-    }
+    for (const poly of polys) city.rings.push([poly[0], p.cap]);
   }
 
-  const features = [];
-  let split = 0;
+  fs.mkdirSync(path.join(DATA, "cities"), { recursive: true });
+  const index = [];
   for (const f of comuni) {
     const p = f.properties;
-    const city = cities.get(p.com_catasto_code);
-    if (!city || city.caps.size < 2) {
-      features.push({
-        type: "Feature",
-        id: p.com_istat_code,
-        properties: { type: "comune", name: p.name, prov: p.prov_acr, reg: p.reg_name },
-        geometry: f.geometry
-      });
-      continue;
-    }
-    split++;
-    for (const [cap, geometry] of capZones(f.geometry, city.points)) {
-      features.push({
-        type: "Feature",
-        id: cap,
-        properties: { type: "cap", name: cap, city: p.name, cityCode: p.com_istat_code, prov: p.prov_acr, reg: p.reg_name },
-        geometry
-      });
-    }
+    const city = parcels.get(p.com_catasto_code);
+    if (!city || city.caps.size < 2) continue;
+    const zones = capZones(f.geometry, city.rings);
+    const file = `data/cities/${p.com_istat_code}.topo.json`;
+    const features = zones.map(([cap, geometry]) => ({ type: "Feature", id: cap, properties: {}, geometry }));
+    let topo = topology({ zones: { type: "FeatureCollection", features } }, 1e6);
+    topo = presimplify(topo);
+    topo = simplify(topo, CITY_SIMPLIFY);
+    topo = filter(topo, filterWeight(topo, 0));
+    topo = quantize(topo, 1e5);
+    fixWinding(topo, "zones");
+    fs.writeFileSync(path.join(__dirname, "..", file), JSON.stringify(topo));
+    index.push({
+      code: p.com_istat_code,
+      name: p.name,
+      prov: p.prov_acr,
+      reg: p.reg_name,
+      file,
+      zones: zones.map(z => z[0]).sort()
+    });
+    console.log(`${p.name}: ${zones.length} zones, ${fs.statSync(path.join(__dirname, "..", file)).size} bytes`);
   }
-
-  let topo = topology({ areas: { type: "FeatureCollection", features } }, 1e6);
-  topo = presimplify(topo);
-  topo = simplify(topo, SIMPLIFY_WEIGHT);
-  topo = filter(topo, filterWeight(topo, 0));
-  topo = quantize(topo, 2e4);
-  fixWinding(topo);
-
-  const out = path.join(__dirname, "..", "data", "areas.topo.json");
-  fs.writeFileSync(out, JSON.stringify(topo));
-  const n = topo.objects.areas.geometries.length;
-  console.log(`Wrote ${n} areas (${split} cities split into CAP zones) to ${out} (${fs.statSync(out).size} bytes)`);
+  index.sort((a, b) => a.name.localeCompare(b.name, "it"));
+  fs.writeFileSync(path.join(DATA, "cities.json"), JSON.stringify(index, null, 1) + "\n");
+  console.log(`Wrote ${index.length} city maps`);
 }
 
-// Solid CAP zones for one city. The city's bounding box is covered with a
-// grid of ~CELL_M metre cells; each cell takes the CAP of the nearest parcel,
-// a majority filter removes speckle, each CAP's cells are traced into
-// outlines (marching squares) and the result is clipped to the city boundary.
-function capZones(cityGeometry, points) {
+// Italy map: every municipality, simplified
+function writeItalyMap(source) {
+  let topo = JSON.parse(JSON.stringify(source));
+  topo = presimplify(topo);
+  topo = simplify(topo, quantile(topo, 0.05));
+  topo = filter(topo, filterWeight(topo, 0));
+  for (const g of topo.objects.comuni.geometries) {
+    const p = g.properties;
+    g.id = p.com_istat_code;
+    g.properties = { name: p.name, prov: p.prov_acr, reg: p.reg_name };
+  }
+  topo = quantize(topo, 1e4);
+  fixWinding(topo, "comuni");
+  const out = path.join(DATA, "comuni.topo.json");
+  fs.writeFileSync(out, JSON.stringify(topo));
+  console.log(`Italy map: ${topo.objects.comuni.geometries.length} municipalities, ${fs.statSync(out).size} bytes`);
+}
+
+// Solid CAP zones for one city, from its labelled parcel rings
+function capZones(cityGeometry, rings) {
   const cityPolys = cityGeometry.type === "Polygon" ? [cityGeometry.coordinates] : cityGeometry.coordinates;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   cityPolys.forEach(poly => poly[0].forEach(([x, y]) => {
@@ -122,45 +125,69 @@ function capZones(cityGeometry, points) {
   const nx = Math.ceil((x1 - x0) / dx);
   const ny = Math.ceil((y1 - y0) / dy);
 
-  // Nearest labelled point for every cell centre
-  const caps = Array.from(new Set(points.map(d => d[2])));
+  const caps = Array.from(new Set(rings.map(r => r[1]))).sort();
   const capIndex = new Map(caps.map((c, i) => [c, i]));
-  const delaunay = Delaunay.from(points, d => d[0], d => d[1]);
-  let grid = new Int32Array(nx * ny);
-  let hint = 0;
-  for (let j = 0; j < ny; j++) {
-    for (let i = 0; i < nx; i++) {
-      hint = delaunay.find(x0 + (i + 0.5) * dx, y0 + (j + 0.5) * dy, hint);
-      grid[j * nx + i] = capIndex.get(points[hint][2]);
-    }
-  }
+  const grid = new Int16Array(nx * ny).fill(-1);
 
-  // Majority filter (3x3), a few passes
-  for (let pass = 0; pass < 3; pass++) {
-    const next = new Int32Array(grid);
-    const counts = new Map();
-    for (let j = 1; j < ny - 1; j++) {
-      for (let i = 1; i < nx - 1; i++) {
-        counts.clear();
-        for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) {
-          const c = grid[(j + v) * nx + i + u];
-          counts.set(c, (counts.get(c) || 0) + 1);
-        }
-        let best = grid[j * nx + i], bestN = 0;
-        counts.forEach((n, c) => { if (n > bestN) { best = c; bestN = n; } });
-        if (bestN >= 5) next[j * nx + i] = best;
+  // 1. Cells whose centre is inside a parcel take its CAP (scanline fill)
+  for (const [ring, cap] of rings) {
+    const k = capIndex.get(cap);
+    let ry0 = Infinity, ry1 = -Infinity;
+    for (const [, y] of ring) { ry0 = Math.min(ry0, y); ry1 = Math.max(ry1, y); }
+    const j0 = Math.max(0, Math.ceil((ry0 - y0) / dy - 0.5));
+    const j1 = Math.min(ny - 1, Math.floor((ry1 - y0) / dy - 0.5));
+    for (let j = j0; j <= j1; j++) {
+      const cy = y0 + (j + 0.5) * dy;
+      const xs = [];
+      for (let n = 0, m = ring.length - 1; n < ring.length; m = n++) {
+        const [ax, ay] = ring[m], [bx, by] = ring[n];
+        if ((ay > cy) !== (by > cy)) xs.push(ax + (cy - ay) / (by - ay) * (bx - ax));
+      }
+      xs.sort((a, b) => a - b);
+      for (let q = 0; q + 1 < xs.length; q += 2) {
+        const i0 = Math.max(0, Math.ceil((xs[q] - x0) / dx - 0.5));
+        const i1 = Math.min(nx - 1, Math.floor((xs[q + 1] - x0) / dx - 0.5));
+        for (let i = i0; i <= i1; i++) grid[j * nx + i] = k;
       }
     }
-    grid = next;
   }
 
-  // Trace each CAP and clip it to the city
+  // 2. Every other cell takes the CAP of the nearest labelled cell (breadth-first)
+  const queue = new Int32Array(nx * ny);
+  let head = 0, tail = 0;
+  for (let n = 0; n < grid.length; n++) if (grid[n] >= 0) queue[tail++] = n;
+  while (head < tail) {
+    const n = queue[head++];
+    const i = n % nx, j = (n - i) / nx, k = grid[n];
+    if (i > 0 && grid[n - 1] < 0) { grid[n - 1] = k; queue[tail++] = n - 1; }
+    if (i < nx - 1 && grid[n + 1] < 0) { grid[n + 1] = k; queue[tail++] = n + 1; }
+    if (j > 0 && grid[n - nx] < 0) { grid[n - nx] = k; queue[tail++] = n - nx; }
+    if (j < ny - 1 && grid[n + nx] < 0) { grid[n + nx] = k; queue[tail++] = n + nx; }
+  }
+
+  // 3. One majority pass (3x3) to smooth single-cell jaggies
+  const smooth = new Int16Array(grid);
+  const counts = new Int32Array(caps.length);
+  for (let j = 1; j < ny - 1; j++) {
+    for (let i = 1; i < nx - 1; i++) {
+      let best = grid[j * nx + i], bestN = 0;
+      for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) counts[grid[(j + v) * nx + i + u]]++;
+      for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) {
+        const c = grid[(j + v) * nx + i + u];
+        if (counts[c] > bestN) { best = c; bestN = counts[c]; }
+      }
+      for (let v = -1; v <= 1; v++) for (let u = -1; u <= 1; u++) counts[grid[(j + v) * nx + i + u]] = 0;
+      if (bestN >= 5) smooth[j * nx + i] = best;
+    }
+  }
+
+  // 4. Trace each CAP and clip it to the city boundary
   const tracer = contours().size([nx, ny]).thresholds([0.5]);
+  const mask = new Float64Array(nx * ny);
   const zones = [];
   caps.forEach((cap, k) => {
-    const mask = new Float64Array(nx * ny);
     let any = false;
-    for (let n = 0; n < mask.length; n++) if (grid[n] === k) { mask[n] = 1; any = true; }
+    for (let n = 0; n < mask.length; n++) { const on = smooth[n] === k; mask[n] = on ? 1 : 0; any = any || on; }
     if (!any) return;
     const traced = tracer(mask)[0].coordinates.map(poly =>
       poly.map(ring => ring.map(([gx, gy]) => [x0 + gx * dx, y0 + gy * dy])));
@@ -172,9 +199,9 @@ function capZones(cityGeometry, points) {
 
 // d3 treats rings as clockwise-exterior; flip any polygon that comes out
 // covering more than half the sphere.
-function fixWinding(topo) {
+function fixWinding(topo, name) {
   const reverseRing = ring => ring.slice().reverse().map(i => ~i);
-  for (const g of topo.objects.areas.geometries) {
+  for (const g of topo.objects[name].geometries) {
     const polys = g.type === "Polygon" ? [g.arcs] : g.type === "MultiPolygon" ? g.arcs : [];
     polys.forEach((rings, pi) => {
       if (geoArea(feature(topo, { type: "Polygon", arcs: rings })) > 2 * Math.PI) {

@@ -30,6 +30,7 @@
         <li><a href="#top" data-i18n="menu.home">Home</a></li>
         <li><a href="#about" data-i18n="menu.about">Who earns what?</a></li>
         <li><a href="#explore" data-i18n="menu.explore">Explore the data</a></li>
+        <li><a href="#cities" data-i18n="menu.cities">Zip codes in cities</a></li>
         <li><a href="#request" data-i18n="menu.request">Request our data</a></li>
       </ul>
     </div>
@@ -59,48 +60,97 @@
     </div>
     <!-- /Intro -->
   
-    <!-- Explore: indicator selector, map + line chart + municipality pickers (logic in js/explore.js) -->
+    <!-- Explore: two panels, each with a map, a line chart and its own list of places (logic in js/explore.js) -->
     <div id="explore" class="explore">
       <div class="container">
         <div class="row">
           <div class="col-md-12">
-            <div class="explore-panel is-loading">
+            <div class="explore-panel is-loading" data-panel="italy">
               <div class="explore-toolbar">
-                <label for="indicator-select" data-i18n="explore.indicator">Indicator</label>
-                <select id="indicator-select" class="form-control"></select>
-                <p id="indicator-description" class="indicator-description"></p>
-                <p id="simulated-note" class="simulated-note" data-i18n="explore.simulated" hidden>Simulated data for demonstration only &ndash; these are not real figures.</p>
+                <div class="form-group indicator-picker">
+                  <label for="indicator-italy" data-i18n="explore.indicator">Indicator</label>
+                  <select id="indicator-italy" class="form-control js-indicator"></select>
+                </div>
+                <p class="indicator-description js-indicator-description"></p>
+                <p class="simulated-note js-simulated" data-i18n="explore.simulated" hidden>Simulated data for demonstration only &ndash; these are not real figures.</p>
               </div>
               <div class="row">
                 <div class="col-md-5">
-                  <div id="map-chart" class="chart-box" data-i18n-aria-label="explore.mapLabel" aria-label="Map of Italian municipalities and zip codes"></div>
-                  <div id="map-legend" class="map-legend"></div>
+                  <div class="chart-box js-map" data-i18n-aria-label="explore.mapLabel" aria-label="Map of Italian municipalities"></div>
+                  <div class="map-legend js-legend"></div>
                   <div class="year-slider">
-                    <input id="year-slider" type="range" data-i18n-aria-label="explore.year" aria-label="Year">
-                    <span id="year-label" class="year-label"></span>
+                    <input type="range" class="js-year-slider" data-i18n-aria-label="explore.year" aria-label="Year">
+                    <span class="year-label js-year-label"></span>
                   </div>
-                  <p class="chart-hint" data-i18n="explore.hint">Scroll or pinch to zoom, drag to pan, click an area to add it to the chart. Large cities are split into zip codes (CAP).</p>
-                  <p class="chart-credit" data-i18n-html="explore.credit">Zip code areas derived from <a href="https://zornade.com/data-downloads/" target="_blank" rel="noopener">Zornade</a> (includes &copy; OpenStreetMap contributors, ODbL). Municipal boundaries: ISTAT via <a href="https://github.com/openpolis/geojson-italy" target="_blank" rel="noopener">openpolis</a>.</p>
+                  <p class="chart-hint" data-i18n="explore.hint">Scroll or pinch to zoom, drag to pan, click a municipality to add it to the chart. Zip codes for the large cities are in the panel below.</p>
+                  <p class="chart-credit" data-i18n-html="explore.creditItaly">Municipal boundaries: ISTAT via <a href="https://github.com/openpolis/geojson-italy" target="_blank" rel="noopener">openpolis</a>.</p>
                 </div>
                 <div class="col-md-5">
-                  <div id="line-chart" class="chart-box" data-i18n-aria-label="explore.lineLabel" aria-label="Line chart of the selected places over time"></div>
+                  <div class="chart-box js-line" data-i18n-aria-label="explore.lineLabel" aria-label="Line chart of the selected places over time"></div>
                 </div>
                 <div class="col-md-2">
-                  <!-- Year dropdown and map slider stay in sync: changing either updates the other -->
+                  <!-- Year is shared by both panels; the list of places is this panel's own -->
                   <div class="form-group">
-                    <label for="year-select" data-i18n="explore.year">Year</label>
-                    <select id="year-select" class="form-control"></select>
+                    <label for="year-italy" data-i18n="explore.year">Year</label>
+                    <select id="year-italy" class="form-control js-year-select"></select>
                   </div>
-                  <!-- Places can be added here or by clicking the map; both feed the same selection -->
                   <div class="form-group">
-                    <label for="place-search" data-i18n="explore.search">Municipality or zip code</label>
-                    <input id="place-search" type="search" class="form-control" data-i18n-placeholder="explore.searchPlaceholder" placeholder="e.g. Bologna or 00186" list="place-options" autocomplete="off">
-                    <datalist id="place-options"></datalist>
+                    <label for="search-italy" data-i18n="explore.search">Municipality or zip code</label>
+                    <input id="search-italy" type="search" class="form-control js-search" data-i18n-placeholder="explore.searchPlaceholder" placeholder="e.g. Bologna or 00186" list="search-options-italy" autocomplete="off">
+                    <datalist id="search-options-italy" class="js-search-options"></datalist>
                   </div>
-                  <ul id="place-selected" class="place-selected list-unstyled"></ul>
+                  <ul class="place-selected list-unstyled js-selected"></ul>
                 </div>
               </div>
             </div>
+
+            <div id="cities" class="panel-heading-block">
+              <h2 data-i18n="city.title">Zip codes in major cities</h2>
+              <p data-i18n="city.lead">Pick a city to see it by zip code. This chart has its own list of places, separate from the one above.</p>
+            </div>
+            <div class="explore-panel is-loading" data-panel="city">
+              <div class="explore-toolbar">
+                <div class="form-group city-picker">
+                  <label for="city-select" data-i18n="city.select">City</label>
+                  <select id="city-select" class="form-control js-city"></select>
+                </div>
+                <div class="form-group indicator-picker">
+                  <label for="indicator-city" data-i18n="explore.indicator">Indicator</label>
+                  <select id="indicator-city" class="form-control js-indicator"></select>
+                </div>
+                <p class="indicator-description js-indicator-description"></p>
+                <p class="simulated-note js-simulated" data-i18n="explore.simulated" hidden>Simulated data for demonstration only &ndash; these are not real figures.</p>
+              </div>
+              <div class="row">
+                <div class="col-md-5">
+                  <div class="chart-box js-map" data-i18n-aria-label="city.mapLabel" aria-label="Map of the selected city by zip code"></div>
+                  <div class="map-legend js-legend"></div>
+                  <div class="year-slider">
+                    <input type="range" class="js-year-slider" data-i18n-aria-label="explore.year" aria-label="Year">
+                    <span class="year-label js-year-label"></span>
+                  </div>
+                  <p class="chart-hint" data-i18n="city.hint">Scroll or pinch to zoom, drag to pan, click a zip code to add it to the chart.</p>
+                  <p class="chart-credit" data-i18n-html="explore.credit">Zip code areas derived from <a href="https://zornade.com/data-downloads/" target="_blank" rel="noopener">Zornade</a> (includes &copy; OpenStreetMap contributors, ODbL). Municipal boundaries: ISTAT via <a href="https://github.com/openpolis/geojson-italy" target="_blank" rel="noopener">openpolis</a>.</p>
+                </div>
+                <div class="col-md-5">
+                  <div class="chart-box js-line" data-i18n-aria-label="explore.lineLabel" aria-label="Line chart of the selected places over time"></div>
+                </div>
+                <div class="col-md-2">
+                  <!-- Year is shared by both panels; the list of places is this panel's own -->
+                  <div class="form-group">
+                    <label for="year-city" data-i18n="explore.year">Year</label>
+                    <select id="year-city" class="form-control js-year-select"></select>
+                  </div>
+                  <div class="form-group">
+                    <label for="search-city" data-i18n="explore.search">Municipality or zip code</label>
+                    <input id="search-city" type="search" class="form-control js-search" data-i18n-placeholder="explore.searchPlaceholder" placeholder="e.g. Bologna or 00186" list="search-options-city" autocomplete="off">
+                    <datalist id="search-options-city" class="js-search-options"></datalist>
+                  </div>
+                  <ul class="place-selected list-unstyled js-selected"></ul>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

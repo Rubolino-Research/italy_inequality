@@ -1,6 +1,7 @@
-// Generates SIMULATED inequality data for every area on the map (municipalities,
-// and CAP zones for the large cities) so the charts can be built before the
-// real data arrives. Run from the repo root:
+// Generates SIMULATED inequality data for every municipality and for the CAP
+// zones of the large cities (data/cities.json) so the charts can be built
+// before the real data arrives. Run from the repo root (after
+// scripts/prepare_boundaries.js):
 //
 //   node scripts/simulate_data.js
 //
@@ -134,22 +135,14 @@ function simulate(code, region, cityCode) {
   return rows;
 }
 
-const topo = JSON.parse(fs.readFileSync(path.join(ROOT, "data/areas.topo.json")));
-const areas = topo.objects.areas.geometries;
+const comuni = JSON.parse(fs.readFileSync(path.join(ROOT, "data/comuni.topo.json"))).objects.comuni.geometries;
+const cities = JSON.parse(fs.readFileSync(path.join(ROOT, "data/cities.json")));
 
-// Rows to write: every area, plus a whole-city row for each city split into CAP zones
-const units = [];
-const splitCities = new Map();
-for (const g of areas) {
-  const p = g.properties;
-  if (p.type === "cap") {
-    units.push({ code: g.id, region: p.reg, cityCode: p.cityCode });
-    splitCities.set(p.cityCode, p.reg);
-  } else {
-    units.push({ code: g.id, region: p.reg });
-  }
+// Rows to write: every municipality (the big cities as a whole), then every CAP zone
+const units = comuni.map(g => ({ code: g.id, region: g.properties.reg }));
+for (const city of cities) {
+  for (const cap of city.zones) units.push({ code: cap, region: city.reg, cityCode: city.code });
 }
-splitCities.forEach((region, code) => units.push({ code, region }));
 const municipalities = units.filter(u => !u.cityCode);
 
 const out = {};
@@ -177,7 +170,9 @@ for (const ind of INDICATORS) {
 // Fingerprint of the map and data files. The site adds it to every data URL,
 // so a browser holding old cached copies fetches the new ones.
 const hash = require("crypto").createHash("sha1");
-hash.update(fs.readFileSync(path.join(ROOT, "data/areas.topo.json")));
+hash.update(fs.readFileSync(path.join(ROOT, "data/comuni.topo.json")));
+hash.update(fs.readFileSync(path.join(ROOT, "data/cities.json")));
+for (const city of cities) hash.update(fs.readFileSync(path.join(ROOT, city.file)));
 for (const ind of INDICATORS) hash.update(out[ind.id].join("\n"));
 
 fs.writeFileSync(path.join(ROOT, "data/indicators.json"), JSON.stringify({
