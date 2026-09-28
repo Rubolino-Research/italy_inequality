@@ -215,6 +215,10 @@ body {
   text-align: center;
 }
 
+.panel-heading-block:first-child {
+  margin-top: 0;
+}
+
 .panel-heading-block p {
   color: #52514e;
   max-width: 560px;
